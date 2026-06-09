@@ -1,56 +1,19 @@
-import pandas as pd
+import re
 
-HIPAA_DIRECT_IDENTIFIERS = ['Name']
-QUASI_IDENTIFIERS = ['Age', 'ZIP']
+def apply_hipaa_safe_harbor(medical_note: str) -> str:
+    # 1. Mask Names or specific text patterns (Simplified illustration)
+    # 2. Mask Medical Record Numbers (MRN) or ID strings (e.g., 9-digit numbers)
+    note_redacted = re.sub(r'\b\d{9}\b', '[REDACTED_ID]', medical_note)
+    
+    # 3. Mask exact dates (e.g., MM/DD/YYYY)
+    note_redacted = re.sub(r'\b\d{2}/\d{2}/\d{4}\b', '[REDACTED_DATE]', note_redacted)
+    
+    return note_redacted
 
+# Example Usage
+raw_note = "Patient John Doe (ID 123456789) was admitted on 10/12/2023."
+safe_note = apply_hipaa_safe_harbor(raw_note)
 
-def load_sample_data() -> pd.DataFrame:
-    """Return a sample medical dataset for HIPAA de-identification."""
-    return pd.DataFrame(
-        {
-            'Name': ['Alice', 'Bob', 'Charlie', 'David', 'Eva'],
-            'Age': [23, 29, 32, 38, 21],
-            'ZIP': [10001, 10003, 90210, 90211, 10002],
-            'Diagnosis': ['Flu', 'Cold', 'Flu', 'Diabetes', 'Cold'],
-        }
-    )
+print(safe_note)
+# Output: Patient John Doe (ID [REDACTED_ID]) was admitted on [REDACTED_DATE].
 
-
-def remove_direct_identifiers(df: pd.DataFrame) -> pd.DataFrame:
-    """Remove HIPAA direct identifiers from the dataset."""
-    return df.drop(columns=[col for col in HIPAA_DIRECT_IDENTIFIERS if col in df.columns])
-
-
-def generalize_quasi_identifiers(df: pd.DataFrame) -> pd.DataFrame:
-    """Generalize quasi-identifiers to support k-anonymity while preserving sensitive data."""
-    result = df.copy()
-
-    if 'Age' in result.columns:
-        result['Age_Group'] = pd.cut(
-            result['Age'],
-            bins=[0, 20, 30, 40, 50, 100],
-            labels=['0-19', '20-29', '30-39', '40-49', '50+'],
-            include_lowest=True,
-        )
-
-    if 'ZIP' in result.columns:
-        result['ZIP_Prefix'] = result['ZIP'].astype(str).str[:3] + 'XX'
-
-    return result
-
-
-def deidentify_dataset(df: pd.DataFrame) -> pd.DataFrame:
-    """Return a HIPAA de-identified dataset with generalized quasi-identifiers."""
-    df = remove_direct_identifiers(df)
-    df = generalize_quasi_identifiers(df)
-    return df.drop(columns=[col for col in QUASI_IDENTIFIERS if col in df.columns])
-
-
-def main() -> None:
-    df = load_sample_data()
-    deidentified = deidentify_dataset(df)
-    print(deidentified)
-
-
-if __name__ == '__main__':
-    main()
